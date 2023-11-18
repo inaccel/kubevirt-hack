@@ -1,17 +1,18 @@
 package main
 
 import (
-	"crypto/tls"
 	"io"
 	"log"
-	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/bombsimon/logrusr/v3"
 	"github.com/inaccel/kubevirt-hack/internal"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
-	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
+	corev1 "k8s.io/api/core/v1"
+	controllerruntime "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -51,32 +52,34 @@ func main() {
 			return nil
 		},
 		Action: func(context *cli.Context) error {
-			handler, err := admission.StandaloneWebhook(internal.Webhook, admission.StandaloneOptions{
-				Logger: logrusr.New(logrus.StandardLogger()),
+			if err := os.MkdirAll(filepath.Join(os.TempDir(), "k8s-webhook-server", "serving-certs"), os.ModePerm); err != nil {
+				return err
+			}
+			if err := os.Symlink(context.String("cert"), filepath.Join(os.TempDir(), "k8s-webhook-server", "serving-certs", "tls.crt")); err != nil {
+				return err
+			}
+			if err := os.Symlink(context.String("key"), filepath.Join(os.TempDir(), "k8s-webhook-server", "serving-certs", "tls.key")); err != nil {
+				return err
+			}
+
+			config, err := controllerruntime.GetConfig()
+			if err != nil {
+				return err
+			}
+
+			controllerruntime.SetLogger(logrusr.New(logrus.StandardLogger()))
+			manager, err := controllerruntime.NewManager(config, controllerruntime.Options{
+				WebhookServer: webhook.NewServer(webhook.Options{
+					Port: 443,
+				}),
 			})
 			if err != nil {
 				return err
 			}
 
-			http.Handle("/", handler)
+			manager.GetWebhookServer().Register("/", admission.WithCustomDefaulter(manager.GetScheme(), new(corev1.Pod), internal.NewPodDefaulter()))
 
-			watcher, err := certwatcher.New(context.String("cert"), context.String("key"))
-			if err != nil {
-				return err
-			}
-
-			go func() {
-				if err := watcher.Start(context.Context); err != nil {
-					logrus.Error(err)
-				}
-			}()
-
-			server := &http.Server{
-				TLSConfig: &tls.Config{
-					GetCertificate: watcher.GetCertificate,
-				},
-			}
-			return server.ListenAndServeTLS("", "")
+			return manager.GetWebhookServer().Start(context.Context)
 		},
 		Commands: []*cli.Command{
 			initCommand,
