@@ -4,12 +4,13 @@ go 1.21
 
 require (
 	github.com/bombsimon/logrusr/v3 v3.1.0
-	github.com/cert-manager/cert-manager v1.14.0
+	github.com/cert-manager/cert-manager v1.14.3
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli/v2 v2.27.1
-	k8s.io/api v0.29.1
-	k8s.io/apimachinery v0.29.1
-	sigs.k8s.io/controller-runtime v0.17.0
+	k8s.io/api v0.29.2
+	k8s.io/apimachinery v0.29.2
+	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
+	sigs.k8s.io/controller-runtime v0.17.2
 )
 
 require (
@@ -75,7 +76,6 @@ require (
 	k8s.io/component-base v0.29.0 // indirect
 	k8s.io/klog/v2 v2.110.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20240103051144-eec4567ac022 // indirect
-	k8s.io/utils v0.0.0-20240102154912-e7106e64919e // indirect
 	sigs.k8s.io/gateway-api v1.0.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
